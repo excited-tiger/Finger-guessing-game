@@ -29,9 +29,9 @@ class GestureRecognizer:
             base_options=base_options,
             running_mode=VisionRunningMode.IMAGE,    # 使用图像模式
             num_hands=2,    # 最多检测两只手
-            min_hand_detection_confidence=0.5,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5)
+            min_hand_detection_confidence=0.3,
+            min_hand_presence_confidence=0.1,
+            min_tracking_confidence=0.2)
         self.recognizer = mp.tasks.vision.GestureRecognizer.create_from_options(options)
 
         # 初始化绘图工具
@@ -99,46 +99,59 @@ class GestureRecognizer:
                 # 准备文字
                 text = f"Total: {total}"
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                font_scale = 1.5 * scale_factor
-                thickness = 3
+                font_scale = 1 * scale_factor
+                thickness = 5
 
                 # 获取文字大小
                 (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
 
-                # 创建文字图层
-                text_layer = np.zeros((text_height + baseline, text_width, 3), dtype=np.uint8)
-                cv2.putText(text_layer, text, (0, text_height), font, font_scale, (0, 255, 0), thickness)
+                # 创建文字图层（带背景色）
+                text_layer = np.zeros((text_height + baseline + 20, text_width + 20, 3), dtype=np.uint8)
+                # 添加半透明黑色背景
+                cv2.rectangle(text_layer, (0, 0), (text_width + 20, text_height + baseline + 20), (0, 0, 0), -1)
+                # 添加文字
+                cv2.putText(text_layer, text, (10, text_height + 10), font, font_scale, (0, 255, 0), thickness)
 
-                # 水平翻转文字
+                # 水平翻转文字图层
                 text_layer = cv2.flip(text_layer, 1)
 
-                # 将文字叠加到图像上
-                x_pos = canvas_width - text_width - (50 * scale_factor)    # 右对齐
-                y_pos = 50 * scale_factor
-                roi = frame_out[y_pos - text_height:y_pos + baseline, x_pos:x_pos + text_width]
-                roi[text_layer > 0] = text_layer[text_layer > 0]
+                # 将文字叠加到图像上（左上角）
+                x_pos = 5 * scale_factor
+                y_pos = 5 * scale_factor
+                # 使背景半透明
+                alpha = 0.7
+                roi = frame_out[y_pos:y_pos + text_height + baseline + 20, x_pos:x_pos + text_width + 20]
+                cv2.addWeighted(text_layer, alpha, roi, 1 - alpha, 0, roi)
+                frame_out[y_pos:y_pos + text_height + baseline + 20, x_pos:x_pos + text_width + 20] = roi
+
         else:
             # 如果没有检测到手，显示翻转的提示信息
             text = "No hand detected"
             font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 1.5 * scale_factor
-            thickness = 3
+            font_scale = 1 * scale_factor
+            thickness = 5
 
             # 获取文字大小
             (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
 
-            # 创建文字图层
-            text_layer = np.zeros((text_height + baseline, text_width, 3), dtype=np.uint8)
-            cv2.putText(text_layer, text, (0, text_height), font, font_scale, (0, 0, 255), thickness)
+            # 创建文字图层（带背景色）
+            text_layer = np.zeros((text_height + baseline + 20, text_width + 20, 3), dtype=np.uint8)
+            # 添加半透明黑色背景
+            cv2.rectangle(text_layer, (0, 0), (text_width + 20, text_height + baseline + 20), (0, 0, 0), -1)
+            # 添加文字
+            cv2.putText(text_layer, text, (10, text_height + 10), font, font_scale, (0, 0, 255), thickness)
 
-            # 水平翻转文字
+            # 水平翻转文字图层
             text_layer = cv2.flip(text_layer, 1)
 
-            # 将文字叠加到图像上
-            x_pos = canvas_width - text_width - (50 * scale_factor)    # 右对齐
-            y_pos = 50 * scale_factor
-            roi = frame_out[y_pos - text_height:y_pos + baseline, x_pos:x_pos + text_width]
-            roi[text_layer > 0] = text_layer[text_layer > 0]
+            # 将文字叠加到图像上（左上角）
+            x_pos = 5 * scale_factor
+            y_pos = 5 * scale_factor
+            # 使背景半透明
+            alpha = 0.8
+            roi = frame_out[y_pos:y_pos + text_height + baseline + 20, x_pos:x_pos + text_width + 20]
+            cv2.addWeighted(text_layer, alpha, roi, 1 - alpha, 0, roi)
+            frame_out[y_pos:y_pos + text_height + baseline + 20, x_pos:x_pos + text_width + 20] = roi
 
         # 将输出图像缩放回原始大小
         frame_out = cv2.resize(frame_out, (width, height), interpolation=cv2.INTER_AREA)
